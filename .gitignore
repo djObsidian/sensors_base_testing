@@ -1,0 +1,6 @@
+Debug
+Tests
+.settings
+lbm_lib/build
+Drivers/CMSIS
+Drivers/STM32L4xx_HAL_Driver
