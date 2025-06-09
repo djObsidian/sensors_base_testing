@@ -31,7 +31,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "i2c_sensor.h"
+#include "sensor2_i2c.h"
+
 #include "smtc_hal_dbg_trace.h"
 
 #include "scd4x_i2c.h"
@@ -133,100 +134,21 @@ int main(void)
 
   SMTC_HAL_TRACE_INFO("Initializing I2C\n");
 
-  I2C_Sensor_Context_t i2c_context = {0};
-
   I2C_HandleTypeDef *i2c_handles[3] = {&hi2c1, &hi2c2, &hi2c3};
 
-  status = I2C_Sensor_Init(&i2c_context, i2c_handles, 3);
+  status = I2C_Sensor_Init(i2c_handles, 3);
+
   if (status != HAL_OK) {
 	  SMTC_HAL_TRACE_ERROR("FUCK! Failed to init i2c lib \n");
   }
 
-
-  status = I2C_Sensor_DiscoverDevices(&i2c_context, &I2Ccount);
+  status = I2C_Sensor_Discover_Devices(&I2Ccount);
   if (status != HAL_OK) {
-	  SMTC_HAL_TRACE_ERROR("FUCK! Failed to count i2c devices \n");
+  	  SMTC_HAL_TRACE_ERROR("FUCK! Failed to count i2c devices \n");
   }
 
-  SMTC_HAL_TRACE_INFO("Found %d i2c devices \n", I2Ccount);
 
-  int16_t error = NO_ERROR;
 
-  scd4x_init(SCD41_I2C_ADDR_62);
-
-  uint16_t serial_number[3] = {0};
-  HAL_Delay(3);
-  // Ensure sensor is in clean state
-  error = scd4x_wake_up();
-  if (error != NO_ERROR) {
-	  SMTC_HAL_TRACE_INFO("error executing wake_up(): %i\n", error);
-  }
-
-  error = scd4x_stop_periodic_measurement();
-  if (error != NO_ERROR) {
-	  SMTC_HAL_TRACE_INFO("error executing stop_periodic_measurement(): %i\n", error);
-  }
-
-  error = scd4x_reinit();
-  if (error != NO_ERROR) {
-	  SMTC_HAL_TRACE_INFO("error executing reinit(): %i\n", error);
-  }
-
-  // Read out information about the sensor
-  error = scd4x_get_serial_number(serial_number, 3);
-  if (error != NO_ERROR) {
-	  SMTC_HAL_TRACE_INFO("error executing get_serial_number(): %i\n", error);
-	  return error;
-  }
-  SMTC_HAL_TRACE_INFO("serial number: ");
-  convert_and_print_serial(serial_number);
-  SMTC_HAL_TRACE_PRINTF("\n");
-
-  error = scd4x_start_periodic_measurement();
-  if (error != NO_ERROR) {
-	  printf("error executing start_periodic_measurement(): %i\n", error);
-	  return error;
-  }
-
-  bool data_ready = false;
-  uint16_t co2_concentration = 0;
-  int32_t temperature = 0;
-  int32_t relative_humidity = 0;
-  uint16_t repetition = 0;
-  for (repetition = 0; repetition < 50; repetition++) {
-	  //
-	  // Slow down the sampling to 0.2Hz.
-	  //
-	  HAL_Delay(5000);
-	  //
-	  // If ambient pressure compensation during measurement
-	  // is required, you should call the respective functions here.
-	  // Check out the header file for the function definition.
-	  error = scd4x_get_data_ready_status(&data_ready);
-	  if (error != NO_ERROR) {
-		  SMTC_HAL_TRACE_INFO("error executing get_data_ready_status(): %i\n", error);
-		  continue;
-	  }
-	  while (!data_ready) {
-		  HAL_Delay(100);
-		  error = scd4x_get_data_ready_status(&data_ready);
-		  if (error != NO_ERROR) {
-			  SMTC_HAL_TRACE_INFO("error executing get_data_ready_status(): %i\n", error);
-			  continue;
-		  }
-	  }
-	  error = scd4x_read_measurement(&co2_concentration, &temperature,
-									 &relative_humidity);
-	  if (error != NO_ERROR) {
-		  SMTC_HAL_TRACE_INFO("error executing read_measurement(): %i\n", error);
-		  continue;
-	  }
-	  //
-	  // Print results in physical units.
-	  SMTC_HAL_TRACE_INFO("CO2 concentration [ppm]: %u\n", co2_concentration);
-	  SMTC_HAL_TRACE_INFO("Temperature [C] : %i\n", temperature/100);
-	  SMTC_HAL_TRACE_INFO("Humidity [RH]: %i\n", relative_humidity/100);
-  }
 
   /* USER CODE END 2 */
 
@@ -237,6 +159,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+	I2C_Sensor_Run(HAL_GetTick());
+	HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }

@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <main.h>
+
 
 #include "sensirion_common.h"
 #include "sensirion_config.h"
@@ -39,20 +39,21 @@
  * Create new I2C instance. You may also use a different interface, e.g. hi2c2,
  * depending on your CubeMX configuration
  */
-extern I2C_HandleTypeDef hi2c2;
+static I2C_HandleTypeDef* i2c_handle;
 
 /**
  * Initialize all hard- and software components that are needed for the I2C
  * communication.
  */
-void sensirion_i2c_hal_init(void) {
-
+void sensirion_i2c_hal_init(I2C_HandleTypeDef* i2c_handle_new) {
+	i2c_handle = i2c_handle_new;
 }
 
 /**
  * Release all resources initialized by sensirion_i2c_hal_init().
  */
 void sensirion_i2c_hal_free(void) {
+	i2c_handle = NULL;
 }
 
 /**
@@ -66,7 +67,7 @@ void sensirion_i2c_hal_free(void) {
  * @returns 0 on success, error code otherwise
  */
 int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint8_t count) {
-    return (int8_t)HAL_I2C_Master_Receive(&hi2c2, (uint16_t)(address << 1),
+    return (int8_t)HAL_I2C_Master_Receive(i2c_handle, (uint16_t)(address << 1),
                                           data, count, 100);
 }
 
@@ -83,7 +84,7 @@ int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint8_t count) {
  */
 int8_t sensirion_i2c_hal_write(uint8_t address, const uint8_t* data,
                                uint8_t count) {
-    return (int8_t)HAL_I2C_Master_Transmit(&hi2c2, (uint16_t)(address << 1),
+    return (int8_t)HAL_I2C_Master_Transmit(i2c_handle, (uint16_t)(address << 1),
                                            (uint8_t*)data, count, 100);
 }
 

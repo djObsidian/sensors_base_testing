@@ -34,6 +34,8 @@
 
 #include "sensirion_config.h"
 
+#include <main.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -54,7 +56,7 @@ int16_t sensirion_i2c_hal_select_bus(uint8_t bus_idx);
  * Initialize all hard- and software components that are needed for the I2C
  * communication.
  */
-void sensirion_i2c_hal_init(void);
+void sensirion_i2c_hal_init(I2C_HandleTypeDef* i2c_handle_new);
 
 /**
  * Release all resources initialized by sensirion_i2c_hal_init().
