@@ -14,6 +14,7 @@ typedef struct {
     uint8_t interface;
     uint8_t address;
     uint8_t poll_period;
+    uint32_t lastPoll;
 } Sensor_device_t;
 
 typedef struct {
@@ -29,7 +30,6 @@ typedef struct {
     uint8_t dataLen;
     uint8_t data[8];
 } SensorData_t;
-
 
 
 

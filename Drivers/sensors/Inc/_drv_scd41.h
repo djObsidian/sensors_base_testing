@@ -32,7 +32,14 @@ typedef struct {
 	int32_t relative_humidity;
 } drv_SCD41_results;
 
-void DRV_SCD41_run(drv_SCD41_Context_t* context, drv_SCD41_results* results, uint32_t timer, uint8_t* status);
+typedef enum {
+	DRV_Wait,
+	DRV_DataReady,
+	DRV_Sleep
+} drv_SDC41_Drv_status;
+
+
+void DRV_SCD41_run(drv_SCD41_Context_t* context, drv_SCD41_results* results, uint32_t timer, drv_SDC41_Drv_status* status);
 
 
 #endif /* SENSORS_INC__DRV_SCD41_H_ */

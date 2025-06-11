@@ -12,6 +12,9 @@
 
 #include "_drv_scd41.h"
 
+
+// Статические переменные
+
 static I2C_HandleTypeDef *sensor2_i2c_handles[I2C_MAX_INTERFACES];
 static uint8_t sensor2_i2c_num_interfaces;                              // Количество интерфейсов
 static Sensor_device_t sensor2_i2c_devices[I2C_MAX_DEVICES];                   // Статический массив устройств
@@ -73,13 +76,30 @@ HAL_StatusTypeDef I2C_Sensor_Run(uint32_t current_time) {
 
 	for (int i=0; i< sensor2_i2c_num_devices; i++) {
 		switch (sensor2_i2c_devices[i].address) {
-			case 0x62:
-				//SCD41
+			case 0x33:
+				break;
+
+
+			case 0x62: //SCD41
 				static drv_SCD41_Context_t contextDRV;
 				static drv_SCD41_results results;
-				static uint8_t status;
+				static drv_SDC41_Drv_status status;
 
 				DRV_SCD41_run(&contextDRV, &results, current_time, &status);
+
+				if (status == DRV_DataReady) {
+					readout_data_pool[i].sensor = sensor2_i2c_devices[i];
+					readout_data_pool[i].new_avaliable = true;
+					readout_data_pool[i].dataLen = 5;
+
+					readout_data_pool[i].data[0] = (results.co2_concentration >> 8) & 0xFF;
+					readout_data_pool[i].data[1] = results.co2_concentration & 0xFF;
+
+					float32_to_fixed_width(results.temperature/1000.0f, -40.0f, 100.0f, 2, readout_data_pool[i].data+2);
+
+					readout_data_pool[i].data[4] = (uint8_t)results.relative_humidity/1000;
+
+				}
 
 
 				break;
@@ -88,6 +108,58 @@ HAL_StatusTypeDef I2C_Sensor_Run(uint32_t current_time) {
 				break;
 		}
 	}
+}
+
+HAL_StatusTypeDef float32_to_fixed_width(float input_val, float min_v, float max_v, uint8_t bytes, uint8_t* out_data) {
+    if (out_data == NULL || (bytes != 1 && bytes != 2)) {
+        return HAL_ERROR;
+    }
+
+    if (input_val < min_v) {
+        for (int i = 0; i < bytes; i++) {
+            out_data[i] = 0x0;
+        }
+        return HAL_OK;
+    }
+
+    if (input_val > max_v) {
+        for (int i = 0; i < bytes; i++) {
+            out_data[i] = 0xFF;
+        }
+        return HAL_OK;
+    }
+
+    // Линейная интерполяция
+    float fx0 = 0.0f + 1;
+    float fx1;
+
+    switch (bytes) {
+        case 1:
+            fx1 = 254.0f; // max uint8 - 1
+            break;
+        case 2:
+            fx1 = 65534.0f; // max uint16 - 1
+            break;
+        default:
+            return HAL_ERROR; // Уже проверено выше, но для безопасности
+    }
+
+    float linresult = fx0 + (fx1 - fx0) / (max_v - min_v) * (input_val - min_v);
+
+    switch (bytes) {
+        case 1:
+            out_data[0] = (uint8_t)linresult;
+            break;
+        case 2:
+            uint16_t result16 = (uint16_t)linresult;
+            out_data[0] = (result16 >> 8) & 0xFF;
+            out_data[1] = (result16 & 0xFF);
+            break;
+        default:
+            return HAL_ERROR; // Уже проверено выше
+    }
+
+    return HAL_OK;
 }
 
 
