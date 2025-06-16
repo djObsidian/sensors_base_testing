@@ -7,12 +7,13 @@
 
 #include "_drv_scd41.h"
 #include "scd4x_i2c.h"
+#include "sensirion_i2c_hal.h"
 
 #include "smtc_hal_dbg_trace.h"
 
 static int16_t error = NO_ERROR;
 
-void DRV_SCD41_run(drv_SCD41_Context_t* context, drv_SCD41_results* results, uint32_t timer, drv_SDC41_Drv_status* status) {
+void DRV_SCD41_run(drv_SCD41_Context_t* context, drv_SCD41_results* results, uint32_t timer, drv_Drv_status* status) {
 
 	SCD41_State_t next_state = context->driver_state;
 	bool data_ready = false;
@@ -20,6 +21,7 @@ void DRV_SCD41_run(drv_SCD41_Context_t* context, drv_SCD41_results* results, uin
 	switch (context->driver_state) {
 		case S_START:
 			*status = DRV_Wait;
+			//sensirion_i2c_hal_init(context->i2c_handle);
 			scd4x_init(SCD41_I2C_ADDR_62);
 			error = scd4x_wake_up();
 			error = scd4x_stop_periodic_measurement();
@@ -87,7 +89,7 @@ void DRV_SCD41_run(drv_SCD41_Context_t* context, drv_SCD41_results* results, uin
 		case S_SLEEP:
 			*status = DRV_Sleep;
 			HAL_Delay(1);
-			HAL_Delay(1);
+			SMTC_HAL_TRACE_INFO("Till next: %d\n", 60*1000 -(timer - context->soft_timer_start));
 			if (timer - context->soft_timer_start >= 60*1000) {
 				HAL_Delay(1);
 

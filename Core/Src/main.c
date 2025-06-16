@@ -66,6 +66,8 @@ void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN PFP */
 
+void hal_mcu_set_sleep_for_ms(int32_t milliseconds);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -160,8 +162,17 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	I2C_Sensor_Run(HAL_GetTick());
-	HAL_Delay(100);
+	for (int i=0; i<10; i++) {
+		I2C_Sensor_Run(HAL_GetTick());
+		HAL_Delay(1);
+	}
+	SMTC_HAL_TRACE_INFO("Going to sleep!\n");
+	SMTC_HAL_TRACE_INFO("Current ms: %d\n", HAL_GetTick());
+	__disable_irq();
+	hal_mcu_set_sleep_for_ms(10000);
+	__enable_irq();
+	SMTC_HAL_TRACE_INFO("Waking up!\n");
+	SMTC_HAL_TRACE_INFO("Current ms: %d\n", HAL_GetTick());
   }
   /* USER CODE END 3 */
 }
@@ -244,6 +255,73 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void hal_mcu_set_sleep_for_ms(int32_t milliseconds)
+{
+    HAL_StatusTypeDef rtcStatus = HAL_OK;
+
+    if (milliseconds <= 0) {
+        return;
+    }
+
+    // Настройка RTC Wake-Up Timer для пробуждения
+    uint32_t delay_ms_2_tick = milliseconds * 2 + ((6 * milliseconds) >> 7);
+
+    rtcStatus = HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+    if (rtcStatus != HAL_OK) {
+        return;
+    }
+
+    rtcStatus = HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, delay_ms_2_tick, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
+    if (rtcStatus != HAL_OK) {
+        return;
+    }
+
+    // Отключение ненужной периферии перед входом в STOP2
+    HAL_SuspendTick();
+    HAL_SPI_DeInit(&hspi1);
+    HAL_ADC_DeInit(&hadc1);
+    HAL_I2C_DeInit(&hi2c1);
+    HAL_I2C_DeInit(&hi2c2);
+    HAL_I2C_DeInit(&hi2c3);
+    HAL_QSPI_DeInit(&hqspi);
+    HAL_RNG_DeInit(&hrng);
+    HAL_UART_DeInit(&huart1);
+    HAL_UART_DeInit(&huart2);
+    HAL_UART_DeInit(&huart3);
+    HAL_CRC_DeInit(&hcrc);
+
+    // Обеспечение завершения всех операций
+    __DSB();
+    __ISB();
+
+    // Вход в режим STOP2
+    HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
+
+    // Восстановление после выхода из STOP2
+    SystemClock_Config();
+    PeriphCommonClock_Config();
+
+    // Инициализация периферии
+    //MX_GPIO_Init();
+    MX_ADC1_Init();
+    MX_I2C1_Init();
+    MX_I2C2_Init();
+    MX_I2C3_Init();
+    MX_QUADSPI_Init();
+    MX_RNG_Init();
+    MX_SPI1_Init();
+    MX_USART1_UART_Init();
+    MX_USART2_UART_Init();
+    MX_USART3_UART_Init();
+    MX_CRC_Init();
+
+    HAL_ResumeTick();
+    //hal_mcu_wait_us(10);
+
+    // Отключение RTC Wake-Up Timer
+    rtcStatus = HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+}
 
 /* USER CODE END 4 */
 

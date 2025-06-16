@@ -11,6 +11,7 @@
 // Хуй
 
 #include "_drv_scd41.h"
+#include "_drv_sht3x.h"
 
 
 // Статические переменные
@@ -76,14 +77,33 @@ HAL_StatusTypeDef I2C_Sensor_Run(uint32_t current_time) {
 
 	for (int i=0; i< sensor2_i2c_num_devices; i++) {
 		switch (sensor2_i2c_devices[i].address) {
-			case 0x33:
+			case 0x33: {
+				static sht3x_handle_t handle;
+				handle.i2c_handle = sensor2_i2c_handles[sensor2_i2c_devices[i].interface];
+				handle.device_address = sensor2_i2c_devices[i].address;
+
+				static drv_SHT3x_results results;
+				static drv_Drv_status status;
+
+				// Вызов функции
+				DRV_SHT3x_run(&sensor2_i2c_devices[i].lastPoll, &handle, current_time, sensor2_i2c_devices[i].poll_period, &results, &status);
+
+				if (status == DRV_DataReady) {
+					readout_data_pool[i].sensor = sensor2_i2c_devices[i];
+					readout_data_pool[i].new_avaliable = true;
+					readout_data_pool[i].dataLen = 3; // Предположим, что данные температуры и влажности занимают 4 байта
+
+					float32_to_fixed_width(results.temperature, -40.0f, 100.0f, 2, readout_data_pool[i].data);
+					readout_data_pool[i].data[2] = (uint8_t)results.humidity;
+				}
 				break;
+			}
 
 
-			case 0x62: //SCD41
+			case 0x62: {//SCD41
 				static drv_SCD41_Context_t contextDRV;
 				static drv_SCD41_results results;
-				static drv_SDC41_Drv_status status;
+				static drv_Drv_status status;
 
 				DRV_SCD41_run(&contextDRV, &results, current_time, &status);
 
@@ -100,14 +120,15 @@ HAL_StatusTypeDef I2C_Sensor_Run(uint32_t current_time) {
 					readout_data_pool[i].data[4] = (uint8_t)results.relative_humidity/1000;
 
 				}
-
-
 				break;
+			}
 
 			default:
 				break;
 		}
 	}
+
+	return HAL_OK;
 }
 
 HAL_StatusTypeDef float32_to_fixed_width(float input_val, float min_v, float max_v, uint8_t bytes, uint8_t* out_data) {
