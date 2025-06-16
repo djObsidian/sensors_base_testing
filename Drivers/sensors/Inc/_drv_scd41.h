@@ -8,35 +8,10 @@
 #ifndef SENSORS_INC__DRV_SCD41_H_
 #define SENSORS_INC__DRV_SCD41_H_
 
-#include "main.h"
-#include "sensirion_common.h"
-
-#include "_drv_common.h"
-
-typedef enum {
-	S_START,
-	S_AWAIT_START,
-	S_AWAIT_STABILIZE_MEASURE,
-	S_AWAIT_DATA,
-	S_SLEEP
-} SCD41_State_t;
-
-typedef struct {
-	I2C_HandleTypeDef *i2c_handle;
-	uint32_t soft_timer_start;
-	SCD41_State_t driver_state;
-
-} drv_SCD41_Context_t;
-
-typedef struct {
-	uint16_t co2_concentration;
-	int32_t temperature;
-	int32_t relative_humidity;
-} drv_SCD41_results;
+#include "sensor2_data_types.h"
 
 
-
-void DRV_SCD41_run(drv_SCD41_Context_t* context, drv_SCD41_results* results, uint32_t timer, drv_Drv_status* status);
-
+void DRV_sdc41_init(Sensor_device_t* device, I2C_HandleTypeDef* interface);
+void DRV_sdc41_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer);
 
 #endif /* SENSORS_INC__DRV_SCD41_H_ */

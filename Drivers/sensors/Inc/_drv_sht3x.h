@@ -8,15 +8,12 @@
 #ifndef SENSORS_INC__DRV_SHT3X_H_
 #define SENSORS_INC__DRV_SHT3X_H_
 
+#include "sensor2_data_types.h"
+
 #include "sht3x.h"
-#include "_drv_common.h"
-
-typedef struct {
-	float temperature, humidity;
-} drv_SHT3x_results;
 
 
-void DRV_SHT3x_run(uint32_t* lastPoll, sht3x_handle_t *handle, uint32_t timer, uint32_t pollPeriod, drv_SHT3x_results* results, drv_Drv_status* status);
-
+void DRV_sht3x_init(Sensor_device_t* device, I2C_HandleTypeDef* interface);
+void DRV_sht3x_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer);
 
 #endif /* SENSORS_INC__DRV_SHT3X_H_ */
