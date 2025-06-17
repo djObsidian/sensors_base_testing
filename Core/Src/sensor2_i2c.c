@@ -8,6 +8,8 @@
 #include "sensor2_i2c.h"
 #include "smtc_hal_dbg_trace.h"
 
+#include "_drv_sht3x.h"
+#include "_drv_scd41.h"
 
 static I2C_HandleTypeDef *sensor2_i2c_handles[I2C_MAX_INTERFACES];		// Указатели на интерфейсы
 static uint8_t sensor2_i2c_num_interfaces;                              // Количество интерфейсов
@@ -17,10 +19,14 @@ static uint8_t sensor2_i2c_num_devices;									// Количество устр
 
 // Таблица драйверов
 Driver_map_t driver_map[] = {
-    { 0x62,  DRV_scd41_init, DRV_scd41_run},
-    { 0x33, DRV_sht3x_init, DRV_sht3x_run}
+    { 0x62, DRV_scd41_init, DRV_scd41_run},
+    { 0x44, DRV_sht3x_init, DRV_sht3x_run},
+	{ 0x45, DRV_sht3x_init, DRV_sht3x_run}
     // Другие устройства
 };
+
+// Универсальная таблица параметров
+static uint32_t universalParamTable[UPT_MAX_SIZE];
 
 
 HAL_StatusTypeDef I2C_Sensor_Init(I2C_HandleTypeDef *i2c_handles[], uint8_t num_interfaces) {
@@ -70,8 +76,9 @@ HAL_StatusTypeDef I2C_Sensor_Discover_Devices(uint8_t *device_count) {
 			{
 				driver_map[j].driver_init(
 						&sensor2_i2c_devices[i],
-						sensor2_i2c_handles[sensor2_i2c_devices[i].interface]
-											);
+						sensor2_i2c_handles[sensor2_i2c_devices[i].interface],
+						universalParamTable
+						);
 
 				break;
 			}
@@ -79,6 +86,31 @@ HAL_StatusTypeDef I2C_Sensor_Discover_Devices(uint8_t *device_count) {
     }
 
     return HAL_OK;
+}
+
+HAL_StatusTypeDef I2C_Sensor_Run(uint32_t current_time) {
+
+	for (int i = 0; i<sensor2_i2c_num_devices;i++)
+	{
+		for (size_t j = 0; j < sizeof(driver_map) / sizeof(driver_map[0]); j++)
+		{
+			if (sensor2_i2c_devices[i].address == driver_map[j].device_address)
+			{
+				drv_Drv_status statusNow;
+
+				driver_map[j].driver_run(
+						&sensor2_i2c_devices[i],
+						&statusNow,
+						current_time,
+						universalParamTable
+						);
+
+				break;
+			}
+		}
+	}
+
+	return HAL_OK;
 }
 
 

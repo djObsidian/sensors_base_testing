@@ -67,6 +67,7 @@ void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN PFP */
 
 void hal_mcu_set_sleep_for_ms(int32_t milliseconds);
+uint32_t rtc_time_to_ms(const RTC_TimeTypeDef *t, uint32_t prediv_s);
 
 /* USER CODE END PFP */
 
@@ -149,7 +150,18 @@ int main(void)
   	  SMTC_HAL_TRACE_ERROR("FUCK! Failed to count i2c devices \n");
   }
 
+  RTC_TimeTypeDef last_time = {0};  // Время последнего измерения
+  RTC_TimeTypeDef now_time = {0};
+  RTC_DateTypeDef placeholder_date = {0};
 
+  CoreDebug -> DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT -> CYCCNT = 0;
+  DWT -> CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  uint64_t execcyc = 0;
+  double execus = 0.0;
+
+  uint64_t t1, t2;
 
 
   /* USER CODE END 2 */
@@ -161,18 +173,32 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	t1 = DWT -> CYCCNT;
+    HAL_RTC_GetTime(&hrtc, &now_time, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &placeholder_date, RTC_FORMAT_BIN);
+	uint32_t msnow = rtc_time_to_ms(&now_time, 1023);
+	uint32_t msbefore = rtc_time_to_ms(&last_time, 1023);
+	last_time = now_time;
 
-	for (int i=0; i<10; i++) {
-		I2C_Sensor_Run(HAL_GetTick());
-		HAL_Delay(1);
-	}
-	SMTC_HAL_TRACE_INFO("Going to sleep!\n");
-	SMTC_HAL_TRACE_INFO("Current ms: %d\n", HAL_GetTick());
-	__disable_irq();
-	hal_mcu_set_sleep_for_ms(10000);
-	__enable_irq();
-	SMTC_HAL_TRACE_INFO("Waking up!\n");
-	SMTC_HAL_TRACE_INFO("Current ms: %d\n", HAL_GetTick());
+	t2 = DWT -> CYCCNT;
+
+	execcyc = t2-t1;
+	execus = execcyc/80;
+
+	t1 = DWT -> CYCCNT;
+	//SMTC_HAL_TRACE_INFO("ms delta: %d\n",msnow-msbefore);
+	//SMTC_HAL_TRACE_INFO("Reading RTC took: %f us\n", execus);
+	HAL_UART_Transmit(&huart1, "xuixuixuixuixui\n",16,1000);
+	HAL_UART_Transmit(&huart1, "xuixuixuixuixui\n",16,1000);
+	t2 = DWT -> CYCCNT;
+	execcyc = t2-t1;
+	execus = execcyc/80;
+	SMTC_HAL_TRACE_INFO("UART tracing took: %f us\n", execus);
+
+	//I2C_Sensor_Run(msnow);
+
+	HAL_Delay(10000);
+
   }
   /* USER CODE END 3 */
 }
@@ -321,6 +347,19 @@ void hal_mcu_set_sleep_for_ms(int32_t milliseconds)
 
     // Отключение RTC Wake-Up Timer
     rtcStatus = HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+}
+
+uint32_t rtc_time_to_ms(const RTC_TimeTypeDef *t, uint32_t prediv_s)
+{
+    /* Секундная часть */
+    uint32_t ms = ((uint32_t)t->Hours   * 3600UL +
+                   (uint32_t)t->Minutes *   60UL +
+                   (uint32_t)t->Seconds) * 1000UL;
+
+    /* Дробная часть: SubSeconds убывает! */
+    uint32_t sub_ms = ((prediv_s - t->SubSeconds) * 1000UL) / (prediv_s + 1UL);
+
+    return ms + sub_ms;
 }
 
 /* USER CODE END 4 */

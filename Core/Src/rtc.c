@@ -81,6 +81,7 @@ void MX_RTC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
+  HAL_RTCEx_EnableBypassShadow(&hrtc);
 
   /* USER CODE END RTC_Init 2 */
 
