@@ -20,6 +20,7 @@
 #include "main.h"
 #include "adc.h"
 #include "crc.h"
+#include "dma.h"
 #include "i2c.h"
 #include "lptim.h"
 #include "quadspi.h"
@@ -59,6 +60,9 @@
 
 /* USER CODE BEGIN PV */
 
+extern uint8_t uart_busy;
+extern uint32_t buf_head, buf_tail;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,6 +72,9 @@ void PeriphCommonClock_Config(void);
 
 void hal_mcu_set_sleep_for_ms(int32_t milliseconds);
 uint32_t rtc_time_to_ms(const RTC_TimeTypeDef *t, uint32_t prediv_s);
+int32_t rtc_diff_ms(const RTC_TimeTypeDef *t1,
+                    const RTC_TimeTypeDef *t2,
+                    uint32_t prediv_s);
 
 /* USER CODE END PFP */
 
@@ -114,6 +121,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
@@ -135,6 +143,7 @@ int main(void)
   HAL_StatusTypeDef status;
   uint8_t I2Ccount=0;
 
+  SMTC_HAL_TRACE_INFO("Hullo there!\n");
   SMTC_HAL_TRACE_INFO("Initializing I2C\n");
 
   I2C_HandleTypeDef *i2c_handles[3] = {&hi2c1, &hi2c2, &hi2c3};
@@ -150,18 +159,17 @@ int main(void)
   	  SMTC_HAL_TRACE_ERROR("FUCK! Failed to count i2c devices \n");
   }
 
+  HAL_Delay(100);
+
   RTC_TimeTypeDef last_time = {0};  // Время последнего измерения
   RTC_TimeTypeDef now_time = {0};
   RTC_DateTypeDef placeholder_date = {0};
 
-  CoreDebug -> DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  DWT -> CYCCNT = 0;
-  DWT -> CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  HAL_RTC_GetTime(&hrtc, &now_time, RTC_FORMAT_BIN);
+  HAL_RTC_GetDate(&hrtc, &placeholder_date, RTC_FORMAT_BIN);
+  last_time = now_time;
 
-  uint64_t execcyc = 0;
-  double execus = 0.0;
-
-  uint64_t t1, t2;
+  uint32_t delta;
 
 
   /* USER CODE END 2 */
@@ -173,31 +181,22 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	t1 = DWT -> CYCCNT;
+
+
     HAL_RTC_GetTime(&hrtc, &now_time, RTC_FORMAT_BIN);
 	HAL_RTC_GetDate(&hrtc, &placeholder_date, RTC_FORMAT_BIN);
-	uint32_t msnow = rtc_time_to_ms(&now_time, 1023);
-	uint32_t msbefore = rtc_time_to_ms(&last_time, 1023);
+
+	delta = rtc_diff_ms(&last_time, &now_time, 1023);
+
 	last_time = now_time;
 
-	t2 = DWT -> CYCCNT;
+	SMTC_HAL_TRACE_INFO("Delta: %d\n", delta);
 
-	execcyc = t2-t1;
-	execus = execcyc/80;
+	I2C_Sensor_Run(delta);
 
-	t1 = DWT -> CYCCNT;
-	//SMTC_HAL_TRACE_INFO("ms delta: %d\n",msnow-msbefore);
-	//SMTC_HAL_TRACE_INFO("Reading RTC took: %f us\n", execus);
-	HAL_UART_Transmit(&huart1, "xuixuixuixuixui\n",16,1000);
-	HAL_UART_Transmit(&huart1, "xuixuixuixuixui\n",16,1000);
-	t2 = DWT -> CYCCNT;
-	execcyc = t2-t1;
-	execus = execcyc/80;
-	SMTC_HAL_TRACE_INFO("UART tracing took: %f us\n", execus);
-
-	//I2C_Sensor_Run(msnow);
-
-	HAL_Delay(10000);
+	__disable_irq();
+	hal_mcu_set_sleep_for_ms(10000);
+	__enable_irq();
 
   }
   /* USER CODE END 3 */
@@ -290,7 +289,40 @@ void hal_mcu_set_sleep_for_ms(int32_t milliseconds)
         return;
     }
 
-    // Настройка RTC Wake-Up Timer для пробуждения
+    // 1. Дождаться завершения всех DMA-передач по UART
+	// Таймаут 5 мс (достаточно для 20 байт при 460800 бит/с = ~0.43 мс)
+	// SystemCoreClock - частота процессора в Гц, делим на 1000 для мс
+	const uint32_t cycles_per_ms = SystemCoreClock / 1000;
+	const uint32_t timeout_cycles = 5 * cycles_per_ms; // 5 мс
+	volatile uint32_t count = timeout_cycles;
+
+	__enable_irq();
+
+	while (uart_busy && count > 0) {
+		__NOP(); // Инструкция NOP
+		count--;
+	}
+
+    if (uart_busy) {
+        // Принудительно завершаем DMA, если таймаут истёк
+        HAL_DMA_Abort(huart1.hdmatx);
+        uart_busy = 0;
+    }
+
+    __disable_irq();
+
+    buf_head = 0;
+	buf_tail = 0;
+	uart_busy = 0;
+
+    // 2. Отключение DMA для UART
+    if (huart1.hdmatx != NULL) {
+    	HAL_UART_DMAStop(&huart1);
+    	HAL_DMA_Abort(huart1.hdmatx);
+        HAL_DMA_DeInit(huart1.hdmatx); // Деинициализируем DMA-канал
+    }
+
+    // 3. Настройка RTC Wake-Up Timer для пробуждения
     uint32_t delay_ms_2_tick = milliseconds * 2 + ((6 * milliseconds) >> 7);
 
     rtcStatus = HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
@@ -303,7 +335,7 @@ void hal_mcu_set_sleep_for_ms(int32_t milliseconds)
         return;
     }
 
-    // Отключение ненужной периферии перед входом в STOP2
+    // 4. Отключение ненужной периферии перед входом в STOP2
     HAL_SuspendTick();
     HAL_SPI_DeInit(&hspi1);
     HAL_ADC_DeInit(&hadc1);
@@ -317,19 +349,19 @@ void hal_mcu_set_sleep_for_ms(int32_t milliseconds)
     HAL_UART_DeInit(&huart3);
     HAL_CRC_DeInit(&hcrc);
 
-    // Обеспечение завершения всех операций
+    // 5. Обеспечение завершения всех операций
     __DSB();
     __ISB();
 
-    // Вход в режим STOP2
+    // 6. Вход в режим STOP2
     HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
-    // Восстановление после выхода из STOP2
+    // 7. Восстановление после выхода из STOP2
     SystemClock_Config();
     PeriphCommonClock_Config();
 
-    // Инициализация периферии
-    //MX_GPIO_Init();
+    // 8. Инициализация периферии
+    MX_DMA_Init();
     MX_ADC1_Init();
     MX_I2C1_Init();
     MX_I2C2_Init();
@@ -337,15 +369,21 @@ void hal_mcu_set_sleep_for_ms(int32_t milliseconds)
     MX_QUADSPI_Init();
     MX_RNG_Init();
     MX_SPI1_Init();
-    MX_USART1_UART_Init();
+    MX_USART1_UART_Init(); // Уже включает инициализацию DMA
     MX_USART2_UART_Init();
     MX_USART3_UART_Init();
     MX_CRC_Init();
 
-    HAL_ResumeTick();
-    //hal_mcu_wait_us(10);
+    // 9. Восстановление кольцевого буфера
+    uart_busy = 0; // Сбрасываем флаг занятости
+    if (buf_head != buf_tail) {
+        // Если в буфере остались данные, запускаем передачу
+        start_next_transmission();
+    }
 
-    // Отключение RTC Wake-Up Timer
+    HAL_ResumeTick();
+
+    // 10. Отключение RTC Wake-Up Timer
     rtcStatus = HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
 }
 
@@ -360,6 +398,23 @@ uint32_t rtc_time_to_ms(const RTC_TimeTypeDef *t, uint32_t prediv_s)
     uint32_t sub_ms = ((prediv_s - t->SubSeconds) * 1000UL) / (prediv_s + 1UL);
 
     return ms + sub_ms;
+}
+
+/* Возвращает Δt в миллисекундах (signed 32-bit); корректно работает с переходом через полночь */
+int32_t rtc_diff_ms(const RTC_TimeTypeDef *t1,
+                    const RTC_TimeTypeDef *t2,
+                    uint32_t prediv_s)
+{
+    int32_t ms1 = (int32_t)rtc_time_to_ms(t1, prediv_s);
+    int32_t ms2 = (int32_t)rtc_time_to_ms(t2, prediv_s);
+
+    int32_t diff = ms2 - ms1;
+
+    /* Если перешли через 24 ч, поправляем на полный день (86 400 000 мс) */
+    if (diff < -43200000)       diff += 86400000;   // назад через полночь
+    else if (diff > 43200000)   diff -= 86400000;   // вперёд через полночь
+
+    return diff;
 }
 
 /* USER CODE END 4 */

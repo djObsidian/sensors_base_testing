@@ -15,7 +15,7 @@ void DRV_sht3x_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint3
 
     // Прямое присваивание через union
     device->deviceContext.sht3x.i2cHandle = interface;
-    device->deviceContext.sht3x.lastPoll = 0;
+    device->deviceContext.sht3x.lastPoll = 60*1000;
     device->deviceContext.sht3x.pollPeriod = 60*1000;
 
     SMTC_HAL_TRACE_INFO("Init sht3x\n");
@@ -25,8 +25,10 @@ void DRV_sht3x_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint3
 
 void DRV_sht3x_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, uint32_t upt[]) {
 
-	if (timer - device->deviceContext.sht3x.lastPoll > device->deviceContext.sht3x.pollPeriod) {
-		device->deviceContext.sht3x.lastPoll = timer;
+	device->deviceContext.sht3x.lastPoll += timer;
+
+	if (device->deviceContext.sht3x.lastPoll > device->deviceContext.sht3x.pollPeriod) {
+		device->deviceContext.sht3x.lastPoll = 0;
 		sht3x_handle_t devHandle;
 		devHandle.i2c_handle = device->deviceContext.sht3x.i2cHandle;
 		devHandle.device_address = device->address;

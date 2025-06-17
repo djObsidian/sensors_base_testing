@@ -15,11 +15,14 @@
 
 #include "smtc_hal_trace.h"
 
-#define PRINT_BUFFER_SIZE 511
+#define TRACE_BUFFER_SIZE 1024
+static uint8_t trace_buffer[TRACE_BUFFER_SIZE];
+volatile uint32_t buf_head = 0, buf_tail = 0;
+volatile uint8_t uart_busy = 0;
+static UART_HandleTypeDef *uartHandle; // Ваш UART хэндл
+static volatile uint32_t last_transmit_len = 0; // Для хранения длины текущей передачи
 
-static char string[PRINT_BUFFER_SIZE];
-
-static UART_HandleTypeDef *uartHandle = NULL;
+void start_next_transmission(void);
 
 void hal_trace_print_init(UART_HandleTypeDef *huart) {
     uartHandle = huart;
@@ -35,31 +38,52 @@ void hal_trace_print_var(const char* fmt, ...)
 
 void hal_trace_print(const char* fmt, va_list argp)
 {
+    char temp[256];
+    // Формируем строку
+    int written = vsnprintf(temp, sizeof(temp), fmt, argp);
+    if (written < 0 || written >= (int)sizeof(temp)) {
+        written = snprintf(temp, sizeof(temp), "[TRACE ERROR]\r\n");
+    }
 
-
-    // Use vsnprintf to avoid buffer overflow
-    int written = vsnprintf(string, sizeof(string), fmt, argp);
-
-    if (written < 0)
-    {
-        // Encoding error — optionally print fixed error message
-        const char* err = "[TRACE ERROR: format error]\r\n";
-        HAL_UART_Transmit(uartHandle, (uint8_t *)err, strlen(err), 1000);
+    // Проверяем доступное место в буфере
+    uint32_t space = (buf_tail - buf_head - 1 + TRACE_BUFFER_SIZE) % TRACE_BUFFER_SIZE;
+    if ((uint32_t)written > space) {
+        // Буфер переполнен, пропускаем (можно добавить логирование ошибки)
         return;
     }
 
-    // If truncated, we can mark it (optional)
-    if ((size_t)written >= sizeof(string))
-    {
-        // Optional: indicate string was truncated
-        const char trunc[] = "...[TRUNC]\r\n";
-        // Move last part of buffer to make space for suffix if possible
-        size_t trunc_len = strlen(trunc);
-        if (trunc_len < sizeof(string)) {
-            strncpy(&string[sizeof(string) - trunc_len - 1], trunc, trunc_len);
-            string[sizeof(string) - 1] = '\0';
-        }
+    // Копируем данные в кольцевой буфер
+    for (int i = 0; i < written; i++) {
+        trace_buffer[buf_head] = temp[i];
+        buf_head = (buf_head + 1) % TRACE_BUFFER_SIZE;
     }
 
-    HAL_UART_Transmit(uartHandle, (uint8_t *)string, strlen(string), 1000);
+    // Запускаем передачу, если UART свободен
+    if (!uart_busy) {
+        start_next_transmission();
+    }
+}
+
+void start_next_transmission(void)
+{
+    if (buf_head == buf_tail) {
+        uart_busy = 0; // Нет данных для отправки
+        return;
+    }
+
+    // Определяем размер следующего блока
+    uint32_t len = (buf_head >= buf_tail) ? buf_head - buf_tail : TRACE_BUFFER_SIZE - buf_tail;
+    uart_busy = 1;
+    last_transmit_len = len; // Сохраняем длину для callback
+    HAL_UART_Transmit_DMA(uartHandle, &trace_buffer[buf_tail], len);
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1) {
+        // Обновляем buf_tail на количество переданных байтов
+        buf_tail = (buf_tail + last_transmit_len) % TRACE_BUFFER_SIZE;
+        // Запускаем следующую передачу
+        start_next_transmission();
+    }
 }

@@ -88,7 +88,7 @@ HAL_StatusTypeDef I2C_Sensor_Discover_Devices(uint8_t *device_count) {
     return HAL_OK;
 }
 
-HAL_StatusTypeDef I2C_Sensor_Run(uint32_t current_time) {
+HAL_StatusTypeDef I2C_Sensor_Run(uint32_t deltaTime) {
 
 	for (int i = 0; i<sensor2_i2c_num_devices;i++)
 	{
@@ -101,7 +101,7 @@ HAL_StatusTypeDef I2C_Sensor_Run(uint32_t current_time) {
 				driver_map[j].driver_run(
 						&sensor2_i2c_devices[i],
 						&statusNow,
-						current_time,
+						deltaTime,
 						universalParamTable
 						);
 
