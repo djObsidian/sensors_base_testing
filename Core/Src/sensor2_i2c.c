@@ -90,6 +90,8 @@ HAL_StatusTypeDef I2C_Sensor_Discover_Devices(uint8_t *device_count) {
 
 HAL_StatusTypeDef I2C_Sensor_Run(uint32_t deltaTime) {
 
+	// Осторожно, точные тайминги тут не поддерживаются, т.к. драйвера не имеют фиксированного времени выполнения
+	// Последующий вызов может случиться с реальным deltaTime больше чем данное
 	for (int i = 0; i<sensor2_i2c_num_devices;i++)
 	{
 		for (size_t j = 0; j < sizeof(driver_map) / sizeof(driver_map[0]); j++)

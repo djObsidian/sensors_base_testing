@@ -44,6 +44,15 @@ void DRV_sht3x_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t tim
 
 		SMTC_HAL_TRACE_INFO("SHT3x TEMP: %d \n", (int)temperature);
 		SMTC_HAL_TRACE_INFO("SHT3x HUMID: %d \n", (int)humidity);
+
+		// Запись параметров
+
+		device->sensorData.newAvaliable = true;
+		device->sensorData.dataLen = 3;
+
+		float32_to_fixed_width(temperature, -40.0f, 100.0f, 2, device->sensorData.deviceData);
+		device->sensorData.deviceData[2] = (uint8_t)humidity;
+
 	}
 
 

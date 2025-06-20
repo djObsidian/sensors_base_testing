@@ -183,16 +183,19 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 
-    HAL_RTC_GetTime(&hrtc, &now_time, RTC_FORMAT_BIN);
-	HAL_RTC_GetDate(&hrtc, &placeholder_date, RTC_FORMAT_BIN);
+	for (int i=0; i<10; i++){
+		HAL_RTC_GetTime(&hrtc, &now_time, RTC_FORMAT_BIN);
+		HAL_RTC_GetDate(&hrtc, &placeholder_date, RTC_FORMAT_BIN);
 
-	delta = rtc_diff_ms(&last_time, &now_time, 1023);
+		delta = rtc_diff_ms(&last_time, &now_time, 1023);
 
-	last_time = now_time;
+		last_time = now_time;
 
-	SMTC_HAL_TRACE_INFO("Delta: %d\n", delta);
+		//SMTC_HAL_TRACE_INFO("Delta: %d\n", delta);
 
-	I2C_Sensor_Run(delta);
+		I2C_Sensor_Run(delta);
+		HAL_Delay(10);
+	}
 
 	__disable_irq();
 	hal_mcu_set_sleep_for_ms(10000);

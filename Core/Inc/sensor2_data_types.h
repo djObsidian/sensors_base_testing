@@ -48,7 +48,7 @@ typedef union {
 typedef struct {
 	uint8_t dataLen; 								// Длина данных
 	bool newAvaliable;								// Доступны ли новые
-	uint8_t devceData[SENSOR_MAX_DATA_SIZE];		// Данные
+	uint8_t deviceData[SENSOR_MAX_DATA_SIZE];		// Данные
 } Sensor_data_t;
 
 // Данные о датчике
@@ -65,6 +65,7 @@ typedef struct {
 typedef void (*sensor_driver_init_t)(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint32_t upt[]);
 
 // Указатель на функцию цикла драйвера устройства
+//timer - время с предыдущего вызова функции. Чтобы не ебаться с переполнением
 typedef void (*sensor_driver_run_t)(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, uint32_t upt[]);
 
 typedef struct {
