@@ -5,6 +5,7 @@
  *      Author: Admin
  */
 
+#include <_drv_bmp388.h>
 #include "sensor2_i2c.h"
 #include "smtc_hal_dbg_trace.h"
 
@@ -21,7 +22,8 @@ static uint8_t sensor2_i2c_num_devices;									// Количество устр
 Driver_map_t driver_map[] = {
     { 0x62, DRV_scd41_init, DRV_scd41_run},
     { 0x44, DRV_sht3x_init, DRV_sht3x_run},
-	{ 0x45, DRV_sht3x_init, DRV_sht3x_run}
+	{ 0x45, DRV_sht3x_init, DRV_sht3x_run},
+	{ 0x76, DRV_bmp388_init, DRV_bmp388_run}
     // Другие устройства
 };
 

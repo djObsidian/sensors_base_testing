@@ -34,6 +34,12 @@ typedef struct {
 	uint8_t driverState;
 } drv_scd41_context_t; //9 байт
 
+typedef struct {
+	I2C_HandleTypeDef* i2cHandle;
+	uint32_t lastPoll;
+	uint8_t driverState;
+} drv_bmp388_context_t; //9 байт
+
 // Union для всех возможных контекстов
 // Зато никаких кастов типов!
 // Тут надо соблюдать чтобы каждый тип не занимал много памяти, желательно до 16 байт
@@ -42,6 +48,7 @@ typedef struct {
 typedef union {
 	drv_sht3x_context_t sht3x;              		// Контекст для SHT3x
     drv_scd41_context_t scd41;             			// Контекст для SCD41
+    drv_bmp388_context_t bmp388;					// Контекст для BMP280
 } Sensor_context_t;
 
 // Данные с сенсора
