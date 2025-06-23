@@ -12,6 +12,8 @@
 #include "_drv_sht3x.h"
 #include "_drv_scd41.h"
 
+#define MAX_PCKT_LEN 51
+
 static I2C_HandleTypeDef *sensor2_i2c_handles[I2C_MAX_INTERFACES];		// Указатели на интерфейсы
 static uint8_t sensor2_i2c_num_interfaces;                              // Количество интерфейсов
 
@@ -28,7 +30,7 @@ Driver_map_t driver_map[] = {
 };
 
 // Универсальная таблица параметров
-static uint32_t universalParamTable[UPT_MAX_SIZE];
+static upt_cell_t universalParamTable[UPT_MAX_SIZE];
 
 
 HAL_StatusTypeDef I2C_Sensor_Init(I2C_HandleTypeDef *i2c_handles[], uint8_t num_interfaces) {
@@ -115,6 +117,57 @@ HAL_StatusTypeDef I2C_Sensor_Run(uint32_t deltaTime) {
 	}
 
 	return HAL_OK;
+}
+
+#define MAX_PCKT_LEN 255 // Максимальная длина пакета (uint8_t ограничение)
+
+HAL_StatusTypeDef I2C_Sensor_Fetch_Data(uint8_t data_array[], uint8_t* data_array_size)
+{
+    uint16_t current_index = 0; // Текущая позиция в data_array
+    uint8_t last_interface = 0xFF; // Последний записанный интерфейс (инициализируем несуществующим значением)
+
+    // Проверка входных параметров
+    if (data_array == NULL || data_array_size == NULL) {
+        return HAL_ERROR;
+    }
+
+    // Проходим по всем устройствам
+    for (int i = 0; i < sensor2_i2c_num_devices; i++) {
+        Sensor_device_t* device = &sensor2_i2c_devices[i];
+
+        // Проверяем наличие новых данных
+        if (device->sensorData.newAvaliable) {
+            // Проверяем, достаточно ли места для интерфейса, если он изменился
+            if (device->interface != last_interface) {
+                if (current_index >= MAX_PCKT_LEN) {
+                    break; // Прекращаем упаковку, если превышен лимит
+                }
+                data_array[current_index++] = device->interface + 1;
+                last_interface = device->interface;
+            }
+
+            // Проверяем, достаточно ли места для адреса и данных
+            if (current_index + 1 + device->sensorData.dataLen > MAX_PCKT_LEN) {
+                break; // Прекращаем упаковку, если превышен лимит
+            }
+
+            // Записываем адрес устройства
+            data_array[current_index++] = device->address;
+
+            // Копируем данные сенсора
+            for (uint8_t j = 0; j < device->sensorData.dataLen; j++) {
+                data_array[current_index++] = device->sensorData.deviceData[j];
+            }
+
+            // Сбрасываем флаг новых данных
+            device->sensorData.newAvaliable = false;
+        }
+    }
+
+    // Записываем фактический размер
+    *data_array_size = (uint8_t)current_index;
+
+    return current_index > 0 ? HAL_OK : HAL_BUSY; // HAL_OK если данные были, HAL_BUSY если нет
 }
 
 

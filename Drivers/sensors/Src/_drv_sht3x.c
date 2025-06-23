@@ -8,7 +8,7 @@
 #include "_drv_sht3x.h"
 #include "smtc_hal_dbg_trace.h"
 
-void DRV_sht3x_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint32_t upt[]) {
+void DRV_sht3x_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, upt_cell_t upt[]) {
     if (device == NULL || interface == NULL) {
         return; // Можно заменить на HAL_ERROR
     }
@@ -23,7 +23,7 @@ void DRV_sht3x_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint3
     return;
 }
 
-void DRV_sht3x_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, uint32_t upt[]) {
+void DRV_sht3x_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, upt_cell_t upt[]) {
 
 	device->deviceContext.sht3x.lastPoll += timer;
 

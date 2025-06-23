@@ -12,7 +12,7 @@
 
 #define BMP388_POLL_PERIOD 1000*60*120 //120 минут
 
-void DRV_bmp388_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint32_t upt[]) {
+void DRV_bmp388_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, upt_cell_t upt[]) {
 
 	if (device == NULL || interface == NULL) {
 		return; // Можно заменить на HAL_ERROR
@@ -29,7 +29,7 @@ void DRV_bmp388_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint
 
 }
 
-void DRV_bmp388_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, uint32_t upt[]) {
+void DRV_bmp388_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, upt_cell_t upt[]) {
 
 	device->deviceContext.bmp388.lastPoll += timer;
 
@@ -92,6 +92,11 @@ void DRV_bmp388_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t ti
 					device->sensorData.dataLen = 2;
 					float32_to_fixed_width(temp, -20.0f, 60.0f, 1, device->sensorData.deviceData);
 					float32_to_fixed_width(press / 100, 300.0f, 1100.0f, 1, device->sensorData.deviceData+1);
+
+					device->sensorData.newAvaliable = true;
+
+					upt[SP_PRESSURE].uintval = (uint32_t)press;
+					SMTC_HAL_TRACE_INFO("UPT PRESS: %u\n", upt[SP_PRESSURE].uintval);
 
 					if (BMP388_EnterSleepMode(&hbmp388) != HAL_OK) {
 						SMTC_HAL_TRACE_ERROR("BMP388 Sleep mode failed!\n");

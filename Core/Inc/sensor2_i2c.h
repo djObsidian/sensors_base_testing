@@ -24,7 +24,7 @@ HAL_StatusTypeDef I2C_Sensor_Discover_Devices(uint8_t* device_count);
 
 HAL_StatusTypeDef I2C_Sensor_Run(uint32_t deltaTime);
 
-//HAL_StatusTypeDef I2C_Sensor_Fetch_Data(SensorData_t* data_array, uint8_t data_array_size);
+HAL_StatusTypeDef I2C_Sensor_Fetch_Data(uint8_t data_array[], uint8_t* data_array_size);
 
 //HAL_StatusTypeDef float32_to_fixed_width(float input_val, float min_v, float max_v, uint8_t bytes, uint8_t* out_data);
 

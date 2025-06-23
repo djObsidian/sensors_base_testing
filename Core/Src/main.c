@@ -143,6 +143,10 @@ int main(void)
   HAL_StatusTypeDef status;
   uint8_t I2Ccount=0;
 
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; // Включение DWT
+  DWT->CYCCNT = 0; // Сброс счётчика
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; // Включение счётчика циклов
+
   SMTC_HAL_TRACE_INFO("Hullo there!\n");
   SMTC_HAL_TRACE_INFO("Initializing I2C\n");
 
@@ -169,7 +173,10 @@ int main(void)
   HAL_RTC_GetDate(&hrtc, &placeholder_date, RTC_FORMAT_BIN);
   last_time = now_time;
 
-  uint32_t delta;
+  uint32_t delta, delta2;
+  uint32_t integralDelta = 0;
+
+  uint8_t outData[51];
 
 
   /* USER CODE END 2 */
@@ -188,18 +195,30 @@ int main(void)
 		HAL_RTC_GetDate(&hrtc, &placeholder_date, RTC_FORMAT_BIN);
 
 		delta = rtc_diff_ms(&last_time, &now_time, 1023);
+		integralDelta += delta;
 
 		last_time = now_time;
 
 		//SMTC_HAL_TRACE_INFO("Delta: %d\n", delta);
 
 		I2C_Sensor_Run(delta);
+
+		uint8_t arrsize = 0;
+
+		if (integralDelta > 60*1000) {
+			I2C_Sensor_Fetch_Data(outData, &arrsize);
+			SMTC_HAL_TRACE_ARRAY("Data out:",outData,arrsize);
+			integralDelta = 0;
+		}
+
 		HAL_Delay(10);
 	}
+
 
 	__disable_irq();
 	hal_mcu_set_sleep_for_ms(10000);
 	__enable_irq();
+
 
   }
   /* USER CODE END 3 */

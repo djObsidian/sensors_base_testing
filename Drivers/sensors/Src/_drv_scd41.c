@@ -17,13 +17,13 @@
 
 static int16_t error = NO_ERROR;
 
-void DRV_scd41_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint32_t upt[]) {
+void DRV_scd41_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, upt_cell_t upt[]) {
 
 	SMTC_HAL_TRACE_INFO("Init scd41\n");
 
-	device->deviceContext.scd41.lastPoll = SCD41_POLL_PERIOD;
+	device->deviceContext.scd41.lastPoll = SCD41_POLL_PERIOD-1000*30; // Чтобы bmp388 прочитать раньше
 	device->deviceContext.scd41.i2cHandle = interface;
-	device->deviceContext.scd41.driverState = 0;
+	device->deviceContext.scd41.driverState = 4;
 
 	scd4x_init(SCD41_I2C_ADDR_62);
 
@@ -33,7 +33,7 @@ void DRV_scd41_init(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint3
 	return;
 }
 
-void DRV_scd41_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, uint32_t upt[]) {
+void DRV_scd41_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, upt_cell_t upt[]) {
 
 	device->deviceContext.scd41.lastPoll += timer;
 
@@ -60,6 +60,15 @@ void DRV_scd41_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t tim
 		case 1: {
 			if (device->deviceContext.scd41.lastPoll > 20) {
 				device->deviceContext.scd41.lastPoll = 0;
+
+				if ((upt[SP_PRESSURE].uintval > 70000) && (upt[SP_PRESSURE].uintval < 120000)) {
+					uint32_t cpresval;
+					scd4x_get_ambient_pressure(&cpresval);
+					if (cpresval != upt[SP_PRESSURE].uintval){
+						scd4x_set_ambient_pressure(upt[SP_PRESSURE].uintval);
+						SMTC_HAL_TRACE_INFO("CO2 PRESS SET: %u\n", upt[SP_PRESSURE].uintval);
+					}
+				}
 
 				error = scd4x_measure_single_shot();
 				nextState = 2;
@@ -100,6 +109,7 @@ void DRV_scd41_run(Sensor_device_t* device, drv_Drv_status* status, uint32_t tim
 				device->sensorData.deviceData[1] = co2 & 0xFF;
 				float32_to_fixed_width(temperature, -40.0f, 100.0f, 2, device->sensorData.deviceData+2);
 				device->sensorData.deviceData[4] = humidity/1000;
+				device->sensorData.newAvaliable = true;
 
 			}
 

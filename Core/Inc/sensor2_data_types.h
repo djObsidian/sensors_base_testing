@@ -67,13 +67,20 @@ typedef struct {
 } Sensor_device_t;
 
 
+// Касты опять не нужны
+typedef union {
+	uint32_t uintval;
+	int32_t intval;
+	float floatval;
+} upt_cell_t;
+
 /*=== Универсальный интерфейс драйверов ===*/
 // Указатель на функцию инициализации драйвера устройства
-typedef void (*sensor_driver_init_t)(Sensor_device_t* device, I2C_HandleTypeDef* interface, uint32_t upt[]);
+typedef void (*sensor_driver_init_t)(Sensor_device_t* device, I2C_HandleTypeDef* interface, upt_cell_t upt[]);
 
 // Указатель на функцию цикла драйвера устройства
 //timer - время с предыдущего вызова функции. Чтобы не ебаться с переполнением
-typedef void (*sensor_driver_run_t)(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, uint32_t upt[]);
+typedef void (*sensor_driver_run_t)(Sensor_device_t* device, drv_Drv_status* status, uint32_t timer, upt_cell_t upt[]);
 
 typedef struct {
     uint8_t device_address;
