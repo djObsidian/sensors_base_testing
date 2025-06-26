@@ -1,10 +1,10 @@
 /*!
- * \file      smtc_hal_trace.h
+ * @file      llcc68_driver_version.c
  *
- * \brief     Trace Print Hardware Abstraction Layer definition.
+ * @brief     Placeholder to keep the version of LLCC68 driver.
  *
  * The Clear BSD License
- * Copyright Semtech Corporation 2021. All rights reserved.
+ * Copyright Semtech Corporation 2023. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the disclaimer
@@ -31,52 +31,58 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_TRACE_H__
-#define __SMTC_HAL_TRACE_H__
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /*
  * -----------------------------------------------------------------------------
  * --- DEPENDENCIES ------------------------------------------------------------
  */
 
-#include <stdint.h>   // C99 types
-#include <stdbool.h>  // bool type
-#include <stdarg.h>
-#include <stdio.h>
+#include "llcc68_driver_version.h"
 
-#include "main.h" //Потому что там заинклюден используемый hal, типа #include "stm32l0xx_hal.h"
 /*
  * -----------------------------------------------------------------------------
- * --- PUBLIC MACROS -----------------------------------------------------------
+ * --- PRIVATE MACROS-----------------------------------------------------------
+ */
+
+#define STR_HELPER( x ) #x
+#define STR( x ) STR_HELPER( x )
+
+#define LLCC68_DRIVER_VERSION_FULL \
+    "v" STR( LLCC68_DRIVER_VERSION_MAJOR ) "." STR( LLCC68_DRIVER_VERSION_MINOR ) "." STR( LLCC68_DRIVER_VERSION_PATCH )
+
+/*
+ * -----------------------------------------------------------------------------
+ * --- PRIVATE CONSTANTS -------------------------------------------------------
  */
 
 /*
  * -----------------------------------------------------------------------------
- * --- PUBLIC CONSTANTS --------------------------------------------------------
+ * --- PRIVATE TYPES -----------------------------------------------------------
  */
 
 /*
  * -----------------------------------------------------------------------------
- * --- PUBLIC TYPES ------------------------------------------------------------
+ * --- PRIVATE VARIABLES -------------------------------------------------------
  */
 
 /*
  * -----------------------------------------------------------------------------
- * --- PUBLIC FUNCTIONS PROTOTYPES ---------------------------------------------
+ * --- PRIVATE FUNCTIONS DECLARATION -------------------------------------------
  */
-void hal_trace_print_init(UART_HandleTypeDef *huart);
-void hal_trace_print( const char* fmt, va_list argp );
-void hal_trace_print_var( const char* fmt, ... );
-void start_next_transmission(void);
 
-#ifdef __cplusplus
+/*
+ * -----------------------------------------------------------------------------
+ * --- PUBLIC FUNCTIONS DEFINITION ---------------------------------------------
+ */
+
+const char* llcc68_driver_version_get_version_string( void )
+{
+    return ( const char* ) LLCC68_DRIVER_VERSION_FULL;
 }
-#endif
 
-#endif  // __SMTC_HAL_TRACE_H__
+/*
+ * -----------------------------------------------------------------------------
+ * --- PRIVATE FUNCTIONS DEFINITION --------------------------------------------
+ */
 
 /* --- EOF ------------------------------------------------------------------ */

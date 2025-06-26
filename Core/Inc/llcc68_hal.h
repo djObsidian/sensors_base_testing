@@ -1,7 +1,7 @@
-/*!
- * \file      smtc_hal_trace.h
+/**
+ * @file      llcc68_hal.h
  *
- * \brief     Trace Print Hardware Abstraction Layer definition.
+ * @brief     Hardware Abstraction Layer for LLCC68
  *
  * The Clear BSD License
  * Copyright Semtech Corporation 2021. All rights reserved.
@@ -31,8 +31,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_TRACE_H__
-#define __SMTC_HAL_TRACE_H__
+
+#ifndef LLCC68_HAL_H
+#define LLCC68_HAL_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,12 +44,9 @@ extern "C" {
  * --- DEPENDENCIES ------------------------------------------------------------
  */
 
-#include <stdint.h>   // C99 types
-#include <stdbool.h>  // bool type
-#include <stdarg.h>
-#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#include "main.h" //Потому что там заинклюден используемый hal, типа #include "stm32l0xx_hal.h"
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC MACROS -----------------------------------------------------------
@@ -59,24 +57,85 @@ extern "C" {
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
 
+/**
+ * @brief Write this to SPI bus while reading data, or as a dummy/placeholder
+ */
+#define LLCC68_NOP ( 0x00 )
+
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC TYPES ------------------------------------------------------------
  */
 
+typedef enum llcc68_hal_status_e
+{
+    LLCC68_HAL_STATUS_OK    = 0,
+    LLCC68_HAL_STATUS_ERROR = 3,
+} llcc68_hal_status_t;
+
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC FUNCTIONS PROTOTYPES ---------------------------------------------
  */
-void hal_trace_print_init(UART_HandleTypeDef *huart);
-void hal_trace_print( const char* fmt, va_list argp );
-void hal_trace_print_var( const char* fmt, ... );
-void start_next_transmission(void);
+
+/**
+ * Radio data transfer - write
+ *
+ * @remark Shall be implemented by the user
+ *
+ * @param [in] context          Radio implementation parameters
+ * @param [in] command          Pointer to the buffer to be transmitted
+ * @param [in] command_length   Buffer size to be transmitted
+ * @param [in] data             Pointer to the buffer to be transmitted
+ * @param [in] data_length      Buffer size to be transmitted
+ *
+ * @returns Operation status
+ */
+llcc68_hal_status_t llcc68_hal_write( const void* context, const uint8_t* command, const uint16_t command_length,
+                                      const uint8_t* data, const uint16_t data_length );
+
+/**
+ * Radio data transfer - read
+ *
+ * @remark Shall be implemented by the user
+ *
+ * @param [in] context          Radio implementation parameters
+ * @param [in] command          Pointer to the buffer to be transmitted
+ * @param [in] command_length   Buffer size to be transmitted
+ * @param [in] data             Pointer to the buffer to be received
+ * @param [in] data_length      Buffer size to be received
+ *
+ * @returns Operation status
+ */
+llcc68_hal_status_t llcc68_hal_read( const void* context, const uint8_t* command, const uint16_t command_length,
+                                     uint8_t* data, const uint16_t data_length );
+
+/**
+ * Reset the radio
+ *
+ * @remark Shall be implemented by the user
+ *
+ * @param [in] context Radio implementation parameters
+ *
+ * @returns Operation status
+ */
+llcc68_hal_status_t llcc68_hal_reset( const void* context );
+
+/**
+ * Wake the radio up.
+ *
+ * @remark Shall be implemented by the user
+ *
+ * @param [in] context Radio implementation parameters
+ *
+ * @returns Operation status
+ */
+llcc68_hal_status_t llcc68_hal_wakeup( const void* context );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // __SMTC_HAL_TRACE_H__
+#endif  // LLCC68_HAL_H
 
 /* --- EOF ------------------------------------------------------------------ */

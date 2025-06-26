@@ -15,7 +15,7 @@
 
 #include "smtc_hal_trace.h"
 
-#define TRACE_BUFFER_SIZE 1024
+#define TRACE_BUFFER_SIZE 2048
 static uint8_t trace_buffer[TRACE_BUFFER_SIZE];
 volatile uint32_t buf_head = 0, buf_tail = 0;
 volatile uint8_t uart_busy = 0;

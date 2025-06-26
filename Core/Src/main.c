@@ -39,6 +39,9 @@
 #include "scd4x_i2c.h"
 #include "sensirion_common.h"
 #include "sensirion_i2c_hal.h"
+
+#include "llcc68.h"
+#include "llcc68_context.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -86,6 +89,16 @@ void convert_and_print_serial(uint16_t* serial_raw) {
                                 LONG_INTEGER, 6);
     SMTC_HAL_TRACE_PRINTF("0x%x", serial_as_int);
 }
+
+llcc68_context_t radio_context = {
+    .spi = &hspi1,
+    .nss_port = LORA_NSS_GPIO_Port,
+    .nss_pin = LORA_NSS_Pin,
+    .reset_port = LORA_NRST_GPIO_Port,
+    .reset_pin = LORA_NRST_Pin,
+    .busy_port = LORA_BUSY_GPIO_Port,
+    .busy_pin = LORA_BUSY_Pin
+};
 
 /* USER CODE END 0 */
 
@@ -164,6 +177,10 @@ int main(void)
   }
 
   HAL_Delay(100);
+
+  HAL_GPIO_WritePin(EN_5V_GPIO_Port, EN_5V_Pin, 0);
+
+
 
   RTC_TimeTypeDef last_time = {0};  // Время последнего измерения
   RTC_TimeTypeDef now_time = {0};

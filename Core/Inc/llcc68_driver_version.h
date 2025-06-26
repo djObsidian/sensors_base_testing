@@ -1,10 +1,10 @@
 /*!
- * \file      smtc_hal_trace.h
+ * @file      llcc68_driver_version.h
  *
- * \brief     Trace Print Hardware Abstraction Layer definition.
+ * @brief     Placeholder to keep the version of LLCC68 driver.
  *
  * The Clear BSD License
- * Copyright Semtech Corporation 2021. All rights reserved.
+ * Copyright Semtech Corporation 2023. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the disclaimer
@@ -31,8 +31,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SMTC_HAL_TRACE_H__
-#define __SMTC_HAL_TRACE_H__
+
+#ifndef LLCC68_DRIVER_VERSION_H
+#define LLCC68_DRIVER_VERSION_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,12 +44,6 @@ extern "C" {
  * --- DEPENDENCIES ------------------------------------------------------------
  */
 
-#include <stdint.h>   // C99 types
-#include <stdbool.h>  // bool type
-#include <stdarg.h>
-#include <stdio.h>
-
-#include "main.h" //Потому что там заинклюден используемый hal, типа #include "stm32l0xx_hal.h"
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC MACROS -----------------------------------------------------------
@@ -59,6 +54,10 @@ extern "C" {
  * --- PUBLIC CONSTANTS --------------------------------------------------------
  */
 
+#define LLCC68_DRIVER_VERSION_MAJOR 2
+#define LLCC68_DRIVER_VERSION_MINOR 3
+#define LLCC68_DRIVER_VERSION_PATCH 2
+
 /*
  * -----------------------------------------------------------------------------
  * --- PUBLIC TYPES ------------------------------------------------------------
@@ -68,15 +67,24 @@ extern "C" {
  * -----------------------------------------------------------------------------
  * --- PUBLIC FUNCTIONS PROTOTYPES ---------------------------------------------
  */
-void hal_trace_print_init(UART_HandleTypeDef *huart);
-void hal_trace_print( const char* fmt, va_list argp );
-void hal_trace_print_var( const char* fmt, ... );
-void start_next_transmission(void);
+
+/*!
+ * @brief Compare version information with current ones
+ *
+ * This macro expands to true boolean value if the version information provided in argument is compatible or
+ * retro-compatible with the version of this code base
+ */
+#define LLCC68_DRIVER_VERSION_CHECK( x, y, z ) \
+    ( x == LLCC68_DRIVER_VERSION_MAJOR &&      \
+      ( y < LLCC68_DRIVER_VERSION_MINOR ||     \
+        ( y == LLCC68_DRIVER_VERSION_MINOR && z <= LLCC68_DRIVER_VERSION_PATCH ) ) )
+
+const char* llcc68_driver_version_get_version_string( void );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // __SMTC_HAL_TRACE_H__
+#endif  // LLCC68_DRIVER_VERSION_H
 
 /* --- EOF ------------------------------------------------------------------ */
